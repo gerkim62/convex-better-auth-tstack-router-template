@@ -110,7 +110,8 @@ The authentication is already set up and ready to use. Visit `/demo/auth` to see
 
 Key files:
 - `src/lib/auth-client.ts` - Client-side auth configuration
-- `convex/auth.ts` - Server-side auth setup
+- `convex/auth.ts` - Server-side auth setup (using T3 Env)
+- `convex/env.ts` - Server environment variables with validation
 - `convex/auth.config.ts` - Auth configuration
 - `src/features/auth/signin-modal.tsx` - Sign-in modal component
 - `src/routes/demo/auth.tsx` - Demo authentication page
@@ -135,21 +136,25 @@ function ProtectedComponent() {
 ```
 ├── convex/                 # Backend functions and schema
 │   ├── auth.config.ts     # Auth configuration
-│   ├── auth.ts           # Auth setup
+│   ├── auth.ts           # Auth setup with Better Auth
+│   ├── env.ts            # Server environment variables (T3 Env)
 │   ├── schema.ts         # Database schema
 │   └── todos.ts          # Example functions
 ├── src/
 │   ├── components/       # Reusable UI components
+│   │   └── ui/          # Shadcn/ui components
 │   ├── features/         # Feature-specific components
 │   │   └── auth/        # Authentication components
 │   ├── integrations/     # Third-party integrations
 │   │   └── convex/      # Convex client setup
 │   ├── lib/             # Utilities and configurations
+│   │   ├── auth-client.ts  # Better Auth client
+│   │   └── utils.ts        # Helper functions
 │   ├── routes/          # File-based routes
 │   │   ├── __root.tsx   # Root layout
 │   │   ├── index.tsx    # Home page
 │   │   └── demo/        # Demo pages
-│   └── env.ts           # Environment variables
+│   └── env.ts           # Client environment variables (T3 Env)
 ├── public/               # Static assets
 └── package.json          # Dependencies and scripts
 ```
@@ -213,37 +218,130 @@ Create files in the `src/routes/` directory. TanStack Router will automatically 
 
 ### Adding Convex Functions
 
-Add new functions in the `convex/` directory:
+Add new functions in the `convex/` directory with type-safe environment variables:
 
 ```typescript
 // convex/myFunction.ts
 import { query } from "./_generated/server";
+import { env } from "./env"; // Import validated env vars
 
 export const myQuery = query({
   args: {},
   handler: async (ctx) => {
+    // Access environment variables with full type safety
+    const siteUrl = env.SITE_URL;
+    
     // Your function logic here
-    return "Hello World!";
+    return { message: "Hello World!", siteUrl };
   },
 });
 ```
 
+To add new environment variables to Convex:
+
+1. Update `convex/env.ts`:
+```typescript
+export const env = createEnv({
+  server: {
+    SITE_URL: z.string().url(),
+    MY_NEW_API_KEY: z.string().min(1), // Add here
+  },
+  runtimeEnv: process.env,
+  emptyStringAsUndefined: true,
+});
+```
+
+2. Set the value:
+```bash
+npx convex env set MY_NEW_API_KEY "your-api-key"
+```
+
+3. Use it in your functions:
+```typescript
+import { env } from "./env";
+const apiKey = env.MY_NEW_API_KEY; // ✅ Fully typed!
+```
+
 ### Environment Variables
 
-Use T3 Env for type-safe environment variables:
+This template uses **T3 Env** for type-safe environment variables in both frontend and backend.
+
+#### Frontend Environment Variables (src/env.ts)
+
+Used in your React application:
 
 ```typescript
 // src/env.ts
+import { createEnv } from '@t3-oss/env-core'
+import { z } from 'zod'
+
 export const env = createEnv({
-  client: {
-    VITE_API_KEY: z.string(),
+  server: {
+    CONVEX_DEPLOYMENT: z.string(),
   },
-  // ...
+  clientPrefix: 'VITE_',
+  client: {
+    VITE_CONVEX_URL: z.url(),
+    VITE_SITE_URL: z.url(),
+    VITE_CONVEX_SITE_URL: z.url(),
+  },
+  runtimeEnv: import.meta.env,
+  emptyStringAsUndefined: true,
+})
+
+// Usage in React components
+import { env } from "@/env";
+console.log(env.VITE_CONVEX_URL);
+```
+
+#### Backend Environment Variables (convex/env.ts)
+
+Used in your Convex functions with full type safety and validation:
+
+```typescript
+// convex/env.ts
+import { createEnv } from "@t3-oss/env-core";
+import { z } from "zod";
+
+export const env = createEnv({
+  server: {
+    SITE_URL: z.string().url(),
+    GOOGLE_CLIENT_ID: z.string().min(1),
+    GOOGLE_CLIENT_SECRET: z.string().min(1),
+  },
+  runtimeEnv: process.env,
+  emptyStringAsUndefined: true,
 });
 
-// Usage
-import { env } from "@/env";
-console.log(env.VITE_API_KEY);
+// Usage in Convex functions
+import { env } from "./env";
+
+export const myQuery = query({
+  handler: async (ctx) => {
+    const apiKey = env.GOOGLE_CLIENT_ID; // ✅ Fully typed!
+    // ...
+  }
+});
+```
+
+**Benefits:**
+- ✅ Full TypeScript autocomplete
+- ✅ Runtime validation with Zod
+- ✅ Clear error messages if variables are missing
+- ✅ No need for `!` or `as string` type assertions
+
+**Setting Convex Environment Variables:**
+
+```bash
+# Set via CLI
+npx convex env set SITE_URL "http://localhost:3000"
+npx convex env set GOOGLE_CLIENT_ID "your_client_id"
+
+# List all variables
+npx convex env list
+
+# Or set via Dashboard
+# https://dashboard.convex.dev -> Your Project -> Settings -> Environment Variables
 ```
 
 ## 🤝 Contributing

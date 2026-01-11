@@ -5,8 +5,9 @@ import { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import authConfig from "./auth.config";
+import { env } from "./env";
 
-const siteUrl = process.env.SITE_URL!;
+const siteUrl = env.SITE_URL;
 
 // The component client has methods needed for integrating Convex with Better Auth,
 // as well as helper methods for general use.
@@ -24,8 +25,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 
      socialProviders: {
         google: { 
-            clientId: process.env.GOOGLE_CLIENT_ID as string, 
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET, 
+            clientId: env.GOOGLE_CLIENT_ID, 
+            clientSecret: env.GOOGLE_CLIENT_SECRET, 
         }, 
     },
 
@@ -35,7 +36,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       // The Convex plugin is required for Convex compatibility
       convex({ authConfig }),
     ],
-  });
+  } satisfies BetterAuthOptions);
 }
 
 // Example function for getting the current user
