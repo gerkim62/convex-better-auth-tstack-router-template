@@ -26,7 +26,7 @@ A modern full-stack template featuring **Convex** for the backend, **Better Auth
 
 ```bash
 # Clone the template
-git clone <your-repo-url>
+git clone https://github.com/gerkim62/convex-better-auth-tstack-router-template
 cd convex-better-auth-tstack-router-template
 
 # Install dependencies
